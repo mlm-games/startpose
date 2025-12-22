@@ -1,0 +1,41 @@
+[package]
+name = "startpage"
+version = "0.1.1"
+edition = "2024"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+repose-core = { git = "https://github.com/mlm-games/repose", package = "repose-core", branch = "main" }
+repose-ui = { git = "https://github.com/mlm-games/repose", package = "repose-ui", branch = "main" }
+repose-platform = { git = "https://github.com/mlm-games/repose", package = "repose-platform", branch = "main", features = [
+    "web",
+] }
+repose-render-wgpu = { git = "https://github.com/mlm-games/repose", package = "repose-render-wgpu", branch = "main" }
+
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+log = "0.4"
+web-time = "1"
+urlencoding = "2"
+
+# wasm glue
+wasm-bindgen = "0.2"
+console_error_panic_hook = "0.1"
+console_log = "1.0"
+
+# browser APIs
+web-sys = { version = "0.3", features = [
+    "Window",
+    "Document",
+    "Location",
+    "Storage",
+] }
+
+getrandom = { version = "0.3.4", features = ["wasm_js"] }
+
+wgpu = { version = "*", features = ["webgpu", "webgl"] }
+winit = { version = "*", features = ["rwh_05"] }
