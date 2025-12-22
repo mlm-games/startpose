@@ -64,7 +64,10 @@ pub fn app(_s: &mut Scheduler) -> View {
                             "Title",
                             Modifier::new()
                                 .height(36.0)
-                                .fill_max_width()
+                                .flex_grow(1.0)
+                                .flex_shrink(1.0)
+                                .flex_basis(0.0)
+                                .min_width(0.0)
                                 .background(theme().surface)
                                 .border(1.0, theme().outline, 8.0)
                                 .padding(8.0),
@@ -72,14 +75,17 @@ pub fn app(_s: &mut Scheduler) -> View {
                                 let new_title = new_title.clone();
                                 move |s: String| new_title.set(s)
                             }),
-                            None::<fn(String)>, // Explicit type for None
+                            None::<fn(String)>,
                         ),
                         Box(Modifier::new().width(8.0).height(1.0)),
                         TextField(
                             "URL (https://…)",
                             Modifier::new()
                                 .height(36.0)
-                                .fill_max_width()
+                                .flex_grow(1.0)
+                                .flex_shrink(1.0)
+                                .flex_basis(0.0)
+                                .min_width(0.0)
                                 .background(theme().surface)
                                 .border(1.0, theme().outline, 8.0)
                                 .padding(8.0),
@@ -87,7 +93,7 @@ pub fn app(_s: &mut Scheduler) -> View {
                                 let new_url = new_url.clone();
                                 move |s: String| new_url.set(s)
                             }),
-                            None::<fn(String)>, // Explicit type for None
+                            None::<fn(String)>,
                         ),
                         Box(Modifier::new().width(8.0).height(1.0)),
                         Button(Text("Add"), {
@@ -108,7 +114,8 @@ pub fn app(_s: &mut Scheduler) -> View {
                         })
                         .modifier(
                             Modifier::new()
-                                .padding(2.0)
+                                .flex_shrink(0.0)
+                                .padding(5.0)
                                 .background(theme().primary)
                                 .clip_rounded(8.0),
                         ),
