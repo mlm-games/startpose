@@ -142,6 +142,27 @@ fn Card(modifier: Modifier, content: View) -> View {
     .child(content)
 }
 
+fn ToastBar(msg: &str) -> View {
+    Box(Modifier::new()
+        .fill_max_width()
+        .background(Color::from_hex("#0F172A"))
+        .border(1.0, theme().outline, 12.0)
+        .clip_rounded(12.0)
+        .padding(12.0))
+    .child(
+        Row(Modifier::new()
+            .fill_max_width()
+            .justify_content(JustifyContent::Center))
+        .child(
+            Text(msg)
+                .size(14.0)
+                .single_line()
+                .overflow_ellipsize()
+                .modifier(Modifier::new().max_width(900.0)),
+        ),
+    )
+}
+
 fn hash64(s: &str) -> u64 {
     // simple stable hash for keys
     let mut x: u64 = 14695981039346656037;
@@ -220,17 +241,7 @@ pub fn app(s: &mut Scheduler) -> View {
                                                   //     .color(Color::from_hex("#9CA3AF")),
                         )),
                         if let Some(msg) = toast.get() {
-                            Box(Modifier::new()
-                                .fill_max_width()
-                                .padding_values(PaddingValues {
-                                    bottom: 12.0,
-                                    ..Default::default()
-                                })
-                                .background(Color::from_hex("#0F172A"))
-                                .border(1.0, theme().outline, 12.0)
-                                .clip_rounded(12.0)
-                                .padding(12.0))
-                            .child(Text(msg).size(14.0).color(theme().on_surface))
+                            ToastBar(&msg)
                         } else {
                             Box(Modifier::new())
                         },
