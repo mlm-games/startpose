@@ -105,6 +105,8 @@ fn Pill(label: &str, selected: bool, on_click: impl Fn() + 'static) -> View {
                 bottom: 8.0,
             })
             .background(bg)
+            .flex_grow(0.0)
+            .flex_shrink(0.0)
             .border(1.0, theme().outline, 999.0)
             .clip_rounded(999.0),
     )
