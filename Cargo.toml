@@ -1,6 +1,6 @@
 [package]
 name = "startpage"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2024"
 publish = false
 
@@ -8,12 +8,11 @@ publish = false
 crate-type = ["cdylib"]
 
 [dependencies]
-repose-core = { git = "https://github.com/mlm-games/repose", package = "repose-core", branch = "main" }
-repose-ui = { git = "https://github.com/mlm-games/repose", package = "repose-ui", branch = "main" }
-repose-platform = { git = "https://github.com/mlm-games/repose", package = "repose-platform", branch = "main", features = [
-    "web",
-] }
-repose-render-wgpu = { git = "https://github.com/mlm-games/repose", package = "repose-render-wgpu", branch = "main" }
+repose-core = "0.10.0"
+repose-ui = "0.10.0"
+repose-platform = { version = "0.10.0", features = ["web"] }
+
+repose-render-wgpu = "0.10.0"
 
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
