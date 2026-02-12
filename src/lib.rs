@@ -14,7 +14,7 @@ pub fn wasm_start() -> Result<(), JsValue> {
     opts.set_continuous_redraw(true);
 
     repose_platform::web::run_web_app(
-        app::app as fn(&mut repose_core::Scheduler) -> repose_core::View,
-        opts,
+        |s, _rc| app::app(s),
+        repose_platform::web::WebOptions::new(None),
     )
 }
