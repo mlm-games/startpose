@@ -1,7 +1,10 @@
 #![allow(non_snake_case)]
 
-use repose_core::locals::set_theme_default;
-use repose_core::{PaddingValues, prelude::*};
+use std::rc::Rc;
+
+use repose_core::{CursorIcon, PaddingValues, prelude::*, set_theme_default};
+use repose_material::material3;
+use repose_ui::overlay::{OverlayHandle, SnackbarAction, SnackbarController, SnackbarRequest};
 use repose_ui::scroll::{ScrollArea, remember_scroll_state};
 use repose_ui::*;
 
@@ -81,19 +84,19 @@ fn theme_pro() -> Theme {
     t
 }
 
-fn Pill(label: &str, selected: bool, on_click: impl Fn() + 'static) -> View {
+fn EnginePill(label: &str, selected: bool, on_click: impl Fn() + 'static) -> View {
     let bg = if selected {
         Color(theme().primary.0, theme().primary.1, theme().primary.2, 48)
     } else {
-        theme().button_bg
+        Color(0, 0, 0, 0)
     };
 
     Button(
-        Text(label)
-            .size(14.0)
-            .single_line()
-            .overflow_ellipsize()
-            .color(theme().on_surface),
+        Text(label).size(13.0).single_line().color(if selected {
+            theme().primary
+        } else {
+            Color::from_hex("#9CA3AF")
+        }),
         on_click,
     )
     .modifier(
@@ -101,70 +104,126 @@ fn Pill(label: &str, selected: bool, on_click: impl Fn() + 'static) -> View {
             .padding_values(PaddingValues {
                 left: 12.0,
                 right: 12.0,
-                top: 8.0,
-                bottom: 8.0,
+                top: 6.0,
+                bottom: 6.0,
             })
             .background(bg)
-            .flex_grow(0.0)
-            .flex_shrink(0.0)
-            .border(1.0, theme().outline, 999.0)
             .clip_rounded(999.0),
     )
 }
 
-fn Primary(label: &str, on_click: impl Fn() + 'static) -> View {
-    Button(
-        Text(label)
-            .single_line()
-            .overflow_ellipsize()
-            .color(theme().on_primary),
-        on_click,
-    )
-    .modifier(
-        Modifier::new()
-            .padding_values(PaddingValues {
-                left: 14.0,
-                right: 14.0,
-                top: 10.0,
-                bottom: 10.0,
-            })
-            .background(theme().primary)
-            .clip_rounded(10.0),
-    )
+fn IconButton(icon: &str, on_click: impl Fn() + 'static) -> View {
+    Box(Modifier::new()
+        .size(32.0, 32.0)
+        .background(Color(0, 0, 0, 0))
+        .clip_rounded(8.0)
+        .clickable()
+        .on_pointer_down(move |_| on_click()))
+    .child(Text(icon).size(18.0).color(Color::from_hex("#9CA3AF")))
 }
 
-fn Card(modifier: Modifier, content: View) -> View {
-    Box(modifier
-        .background(theme().surface)
-        .border(1.0, theme().outline, 14.0)
-        .clip_rounded(14.0)
-        .padding(14.0))
-    .child(content)
-}
+fn BookmarkTile(
+    bm: Bookmark,
+    bookmarks: Rc<Signal<Vec<Bookmark>>>,
+    snackbar: Rc<SnackbarController>,
+) -> View {
+    let url = bm.url.clone();
+    let url_clone = bm.url.clone();
+    let title = bm.title.clone();
 
-fn ToastBar(msg: &str) -> View {
+    let bms = bookmarks.clone();
+    let snackbar_remove = snackbar.clone();
+    let url_for_remove = bm.url.clone();
+
     Box(Modifier::new()
         .fill_max_width()
-        .background(Color::from_hex("#0F172A"))
-        .border(1.0, theme().outline, 12.0)
-        .clip_rounded(12.0)
-        .padding(12.0))
+        .background(theme().surface)
+        .border(1.0, theme().outline, 10.0)
+        .clip_rounded(10.0)
+        .padding_values(PaddingValues {
+            left: 14.0,
+            right: 10.0,
+            top: 12.0,
+            bottom: 12.0,
+        })
+        .clickable()
+        .on_pointer_down(move |_| open_url(&url))
+        .cursor(CursorIcon::Pointer))
     .child(
         Row(Modifier::new()
             .fill_max_width()
-            .justify_content(JustifyContent::Center))
-        .child(
-            Text(msg)
-                .size(14.0)
-                .single_line()
-                .overflow_ellipsize()
-                .modifier(Modifier::new().max_width(900.0)),
-        ),
+            .align_items(AlignItems::Center))
+        .child((
+            // Content area (title + url)
+            Box(Modifier::new().weight(1.0).min_width(0.0)).child(
+                Column(Modifier::new()).child((
+                    Text(title)
+                        .size(15.0)
+                        .single_line()
+                        .overflow_ellipsize()
+                        .color(theme().on_surface)
+                        .modifier(Modifier::new().fill_max_width()),
+                    Text(truncate_url(&url_clone))
+                        .size(12.0)
+                        .single_line()
+                        .overflow_ellipsize()
+                        .color(Color::from_hex("#6B7280"))
+                        .modifier(Modifier::new().fill_max_width()),
+                )),
+            ),
+            // Remove button (only visible on hover/interaction)
+            IconButton("×", {
+                let bms = bms.clone();
+                let snackbar_remove = snackbar_remove.clone();
+                let url_for_remove = url_for_remove.clone();
+                move || {
+                    bms.update(|v| {
+                        if let Some(pos) = v.iter().position(|x| x.url == url_for_remove) {
+                            v.remove(pos);
+                        }
+                    });
+                    storage::save_bookmarks(&bms.get());
+
+                    let sb = snackbar_remove.clone();
+                    sb.show(SnackbarRequest {
+                        message: "Bookmark removed".to_string(),
+                        action: None,
+                        duration_ms: 3000,
+                        builder: Rc::new({
+                            let sb = snackbar_remove.clone();
+                            move || {
+                                material3::Snackbar(
+                                    "Bookmark removed",
+                                    Some(SnackbarAction {
+                                        label: "Dismiss".to_string(),
+                                        on_click: Rc::new({
+                                            let sb = sb.clone();
+                                            move || sb.dismiss()
+                                        }),
+                                    }),
+                                    Modifier::new().absolute().offset(
+                                        Some(16.0),
+                                        None,
+                                        Some(16.0),
+                                        None,
+                                    ),
+                                )
+                            }
+                        }),
+                    });
+                }
+            }),
+        )),
     )
 }
 
+fn truncate_url(url: &str) -> String {
+    url.replace("https://", "")
+        .replace("http://", "")
+        .replace("www.", "")
+}
+
 fn hash64(s: &str) -> u64 {
-    // simple stable hash for keys
     let mut x: u64 = 14695981039346656037;
     for &b in s.as_bytes() {
         x ^= b as u64;
@@ -176,21 +235,19 @@ fn hash64(s: &str) -> u64 {
 pub fn app(s: &mut Scheduler) -> View {
     set_theme_default(theme_pro());
 
+    // State
     let bookmarks = remember(|| signal(storage::load_bookmarks()));
-    let toast = remember(|| signal(None::<String>));
-
     let query = remember(|| signal(String::new()));
     let engine = remember(|| signal(SearchEngine::DuckDuckGo));
-
     let new_title = remember(|| signal(String::new()));
     let new_url = remember(|| signal(String::new()));
-
-    // TextField reset epoch (TextField is platform-managed)
+    let show_add_form = remember(|| signal(false));
     let form_epoch = remember(|| signal(0u64));
-
     let root_scroll = remember_scroll_state("root_scroll");
 
-    // Responsive columns based on window width
+    let overlay = remember(|| OverlayHandle::new());
+    let snackbar = remember(|| SnackbarController::new((*overlay).clone()));
+
     let px_w = s.size.0 as f32;
     let scale = repose_core::locals::density().scale * repose_core::locals::ui_scale().0;
     let dp_w = if scale > 0.0 { px_w / scale } else { px_w };
@@ -205,176 +262,272 @@ pub fn app(s: &mut Scheduler) -> View {
         4
     };
 
-    Surface(
+    let content = Surface(
         Modifier::new()
             .fill_max_size()
             .background(theme().background),
         ScrollArea(
             Modifier::new().fill_max_size(),
             root_scroll,
-            Column(Modifier::new().fill_max_width().padding(16.0)).child((
+            Column(Modifier::new().fill_max_width().padding(24.0)).child(
                 Box(Modifier::new()
                     .fill_max_width()
-                    .max_width(1100.0)
+                    .max_width(900.0)
                     .align_self_center()
                     .min_width(0.0))
                 .child(
-                    Column(Modifier::new().fill_max_width()).child((
-                        // Header
-                        Row(Modifier::new()
+                    Column(
+                        Modifier::new()
                             .fill_max_width()
-                            .align_items(AlignItems::Center)
+                            .align_items(AlignItems::Center),
+                    )
+                    .child((
+                        // Header - minimal
+                        Text("Startpage")
+                            .size(32.0)
+                            .color(theme().on_surface)
+                            .modifier(Modifier::new().padding_values(PaddingValues {
+                                top: 40.0,
+                                bottom: 32.0,
+                                ..Default::default()
+                            })),
+                        // Search Section - Dominant, centered
+                        Box(Modifier::new()
+                            .fill_max_width()
+                            .max_width(600.0)
                             .padding_values(PaddingValues {
-                                bottom: 12.0,
+                                bottom: 16.0,
                                 ..Default::default()
                             }))
-                        .child((
-                            Text("Startpage")
-                                .size(28.0)
-                                .single_line()
-                                .overflow_ellipsize()
-                                .color(theme().on_surface)
-                                .modifier(Modifier::new().weight(1.0).min_width(0.0)),
-                            Box(Modifier::new()), // Text(format!("{} bookmarks", bookmarks.get().len()))
-                                                  //     .size(14.0)
-                                                  //     .single_line()
-                                                  //     .color(Color::from_hex("#9CA3AF")),
-                        )),
-                        if let Some(msg) = toast.get() {
-                            ToastBar(&msg)
-                        } else {
-                            Box(Modifier::new())
-                        },
-                        // Search card with Search button
-                        Card(
-                            Modifier::new().fill_max_width(),
-                            Column(Modifier::new().fill_max_width()).child((
-                                Row(Modifier::new()
+                        .child(
+                            Column(
+                                Modifier::new()
                                     .fill_max_width()
-                                    .align_items(AlignItems::Center))
-                                .child((
-                                    Text("Search")
-                                        .size(14.0)
-                                        .single_line()
-                                        .color(Color::from_hex("#9CA3AF"))
-                                        .modifier(
-                                            Modifier::new()
-                                                .weight(1.0)
-                                                .min_width(0.0)
-                                                .fill_max_width(),
-                                        ),
-                                    Pill("Clear", false, {
-                                        let toast = toast.clone();
+                                    .align_items(AlignItems::Center),
+                            )
+                            .child((
+                                // Large search input
+                                Box(Modifier::new().fill_max_width()).child(TextField(
+                                    "Search or type a URL…",
+                                    Modifier::new()
+                                        .key(0xA11CE_u64)
+                                        .height(56.0)
+                                        .fill_max_width()
+                                        .background(Color::from_hex("#0F172A"))
+                                        .border(1.0, theme().outline, 16.0)
+                                        .clip_rounded(16.0),
+                                    Some({
                                         let query = query.clone();
-                                        move || {
-                                            toast.set(None);
-                                            query.set(String::new());
+                                        move |s| query.set(s)
+                                    }),
+                                    Some({
+                                        let engine = engine.clone();
+                                        move |submitted: String| {
+                                            search_or_open(engine.get(), &submitted)
                                         }
                                     }),
                                 )),
-                                Box(Modifier::new().height(8.0).width(1.0)),
-                                Row(Modifier::new()
-                                    .fill_max_width()
-                                    .align_items(AlignItems::Center))
+                                // Engine pills - subtle, inline
+                                Row(Modifier::new().padding_values(PaddingValues {
+                                    top: 12.0,
+                                    ..Default::default()
+                                }))
                                 .child((
-                                    TextField(
-                                        "Search or type a URL…",
-                                        Modifier::new()
-                                            .key(0xA11CE_u64)
-                                            .height(48.0)
-                                            .weight(1.0)
-                                            .min_width(0.0)
-                                            .background(Color::from_hex("#0F172A"))
-                                            .border(1.0, theme().outline, 12.0)
-                                            .clip_rounded(12.0),
-                                        Some({
-                                            let query = query.clone();
-                                            move |s| query.set(s)
-                                        }),
-                                        Some({
+                                    EnginePill(
+                                        SearchEngine::DuckDuckGo.label(),
+                                        engine.get() == SearchEngine::DuckDuckGo,
+                                        {
                                             let engine = engine.clone();
-                                            move |submitted: String| {
-                                                search_or_open(engine.get(), &submitted.to_string())
-                                            }
-                                        }),
+                                            move || engine.set(SearchEngine::DuckDuckGo)
+                                        },
                                     ),
-                                    Box(Modifier::new().width(10.0).height(1.0)),
-                                    Primary("Search", {
-                                        let q = query.clone();
-                                        let engine = engine.clone();
-                                        move || search_or_open(engine.get(), &q.get())
-                                    }),
+                                    EnginePill(
+                                        SearchEngine::Google.label(),
+                                        engine.get() == SearchEngine::Google,
+                                        {
+                                            let engine = engine.clone();
+                                            move || engine.set(SearchEngine::Google)
+                                        },
+                                    ),
+                                    EnginePill(
+                                        SearchEngine::Brave.label(),
+                                        engine.get() == SearchEngine::Brave,
+                                        {
+                                            let engine = engine.clone();
+                                            move || engine.set(SearchEngine::Brave)
+                                        },
+                                    ),
                                 )),
-                                Box(Modifier::new().height(10.0).width(1.0)),
-                                Row(Modifier::new().fill_max_width().flex_wrap(FlexWrap::Wrap))
-                                    .child((
-                                        Pill(
-                                            SearchEngine::DuckDuckGo.label(),
-                                            engine.get() == SearchEngine::DuckDuckGo,
-                                            {
-                                                let engine = engine.clone();
-                                                move || engine.set(SearchEngine::DuckDuckGo)
-                                            },
-                                        )
-                                        .modifier(Modifier::new().padding(4.0)),
-                                        Pill(
-                                            SearchEngine::Google.label(),
-                                            engine.get() == SearchEngine::Google,
-                                            {
-                                                let engine = engine.clone();
-                                                move || engine.set(SearchEngine::Google)
-                                            },
-                                        )
-                                        .modifier(Modifier::new().padding(4.0)),
-                                        Pill(
-                                            SearchEngine::Brave.label(),
-                                            engine.get() == SearchEngine::Brave,
-                                            {
-                                                let engine = engine.clone();
-                                                move || engine.set(SearchEngine::Brave)
-                                            },
-                                        )
-                                        .modifier(Modifier::new().padding(4.0)),
-                                    )),
                             )),
                         ),
-                        Box(Modifier::new().height(16.0).width(1.0)),
-                        // Add bookmark
-                        Card(
-                            Modifier::new().fill_max_width(),
-                            Column(Modifier::new().fill_max_width()).child((
-                                Row(Modifier::new()
-                                    .fill_max_width()
-                                    .align_items(AlignItems::Center))
-                                .child((
-                                    Text("Add bookmark")
-                                        .size(16.0)
-                                        .single_line()
-                                        .color(theme().on_surface),
-                                    Spacer(),
-                                    Primary("Add", {
+                        // Bookmarks Grid - Flat tiles
+                        if !bookmarks.get().is_empty() {
+                            Box(Modifier::new()
+                                .fill_max_width()
+                                .padding_values(PaddingValues {
+                                    top: 24.0,
+                                    bottom: 24.0,
+                                    ..Default::default()
+                                }))
+                            .child(Grid(
+                                cols,
+                                Modifier::new().fill_max_width(),
+                                bookmarks
+                                    .get()
+                                    .iter()
+                                    .map(|bm| {
+                                        let bm = bm.clone();
+                                        BookmarkTile(bm, bookmarks.clone(), snackbar.clone())
+                                    })
+                                    .collect::<Vec<_>>(),
+                                12.0,
+                                12.0,
+                            ))
+                        } else {
+                            Box(Modifier::new())
+                        },
+                        // Add Bookmark Section - Collapsible
+                        Box(Modifier::new()
+                            .fill_max_width()
+                            .padding_values(PaddingValues {
+                                top: 16.0,
+                                ..Default::default()
+                            }))
+                        .child(if show_add_form.get() {
+                            // Expanded form
+                            Box(Modifier::new()
+                                .fill_max_width()
+                                .max_width(500.0)
+                                .background(theme().surface)
+                                .border(1.0, theme().outline, 12.0)
+                                .clip_rounded(12.0)
+                                .padding(16.0))
+                            .child(
+                                Column(Modifier::new().fill_max_width()).child((
+                                    Row(Modifier::new()
+                                        .fill_max_width()
+                                        .align_items(AlignItems::Center)
+                                        .padding_values(PaddingValues {
+                                            bottom: 12.0,
+                                            ..Default::default()
+                                        }))
+                                    .child((
+                                        Text("Add bookmark")
+                                            .size(14.0)
+                                            .color(Color::from_hex("#9CA3AF")),
+                                        Spacer(),
+                                        IconButton("×", {
+                                            let show = show_add_form.clone();
+                                            move || show.set(false)
+                                        }),
+                                    )),
+                                    Row(Modifier::new().fill_max_width()).child((
+                                        TextField(
+                                            "Title",
+                                            Modifier::new()
+                                                .key(hash64("title") ^ form_epoch.get())
+                                                .height(40.0)
+                                                .weight(1.0)
+                                                .min_width(0.0)
+                                                .background(Color::from_hex("#0F172A"))
+                                                .border(1.0, theme().outline, 10.0)
+                                                .clip_rounded(10.0),
+                                            Some({
+                                                let new_title = new_title.clone();
+                                                move |s| new_title.set(s)
+                                            }),
+                                            None::<fn(String)>,
+                                        ),
+                                        Box(Modifier::new().width(10.0).height(1.0)),
+                                        TextField(
+                                            "URL",
+                                            Modifier::new()
+                                                .key(hash64("url") ^ form_epoch.get())
+                                                .height(40.0)
+                                                .weight(2.0)
+                                                .min_width(0.0)
+                                                .background(Color::from_hex("#0F172A"))
+                                                .border(1.0, theme().outline, 10.0)
+                                                .clip_rounded(10.0),
+                                            Some({
+                                                let new_url = new_url.clone();
+                                                move |s| new_url.set(s)
+                                            }),
+                                            None::<fn(String)>,
+                                        ),
+                                    )),
+                                    Button(Text("Add Bookmark").color(theme().on_primary), {
                                         let bookmarks = bookmarks.clone();
                                         let new_title = new_title.clone();
                                         let new_url = new_url.clone();
-                                        let toast = toast.clone();
+                                        let snackbar = snackbar.clone();
                                         let form_epoch = form_epoch.clone();
+                                        let show_form = show_add_form.clone();
 
                                         move || {
                                             let title = new_title.get().trim().to_string();
                                             let url_raw = new_url.get().trim().to_string();
 
                                             if title.is_empty() || url_raw.is_empty() {
-                                                toast.set(Some(
-                                                    "Title and URL are required.".into(),
-                                                ));
+                                                let sb = snackbar.clone();
+                                                sb.show(SnackbarRequest {
+                                                    message: "Title and URL are required"
+                                                        .to_string(),
+                                                    action: None,
+                                                    duration_ms: 4000,
+                                                    builder: Rc::new({
+                                                        let sb = sb.clone();
+                                                        move || {
+                                                            material3::Snackbar(
+                                                                "Title and URL are required",
+                                                                Some(SnackbarAction {
+                                                                    label: "Dismiss".to_string(),
+                                                                    on_click: Rc::new({
+                                                                        let sb = sb.clone();
+                                                                        move || sb.dismiss()
+                                                                    }),
+                                                                }),
+                                                                Modifier::new().absolute().offset(
+                                                                    Some(16.0),
+                                                                    None,
+                                                                    Some(16.0),
+                                                                    None,
+                                                                ),
+                                                            )
+                                                        }
+                                                    }),
+                                                });
                                                 return;
                                             }
 
                                             let Some(url) = normalize_url(&url_raw) else {
-                                                toast.set(Some(
-                                                    "URL must be a domain or start with http(s)://"
-                                                        .into(),
-                                                ));
+                                                let sb = snackbar.clone();
+                                                sb.show(SnackbarRequest {
+                                                    message: "Invalid URL format".to_string(),
+                                                    action: None,
+                                                    duration_ms: 4000,
+                                                    builder: Rc::new({
+                                                        let sb = sb.clone();
+                                                        move || {
+                                                            material3::Snackbar(
+                                                                "Invalid URL format",
+                                                                Some(SnackbarAction {
+                                                                    label: "Dismiss".to_string(),
+                                                                    on_click: Rc::new({
+                                                                        let sb = sb.clone();
+                                                                        move || sb.dismiss()
+                                                                    }),
+                                                                }),
+                                                                Modifier::new().absolute().offset(
+                                                                    Some(16.0),
+                                                                    None,
+                                                                    Some(16.0),
+                                                                    None,
+                                                                ),
+                                                            )
+                                                        }
+                                                    }),
+                                                });
                                                 return;
                                             };
 
@@ -384,151 +537,77 @@ pub fn app(s: &mut Scheduler) -> View {
                                             new_title.set(String::new());
                                             new_url.set(String::new());
                                             form_epoch.update(|e| *e = e.wrapping_add(1));
+                                            show_form.set(false);
 
-                                            toast.set(Some("Bookmark added.".into()));
+                                            let sb = snackbar.clone();
+                                            sb.show(SnackbarRequest {
+                                                message: "Bookmark added".to_string(),
+                                                action: None,
+                                                duration_ms: 3000,
+                                                builder: Rc::new({
+                                                    let sb = sb.clone();
+                                                    move || {
+                                                        material3::Snackbar(
+                                                            "Bookmark added",
+                                                            Some(SnackbarAction {
+                                                                label: "Dismiss".to_string(),
+                                                                on_click: Rc::new({
+                                                                    let sb = sb.clone();
+                                                                    move || sb.dismiss()
+                                                                }),
+                                                            }),
+                                                            Modifier::new().absolute().offset(
+                                                                Some(16.0),
+                                                                None,
+                                                                Some(16.0),
+                                                                None,
+                                                            ),
+                                                        )
+                                                    }
+                                                }),
+                                            });
                                         }
-                                    }),
-                                )),
-                                Box(Modifier::new().height(12.0).width(1.0)),
-                                Row(Modifier::new().fill_max_width()).child((
-                                    TextField(
-                                        "Title",
+                                    })
+                                    .modifier(
                                         Modifier::new()
-                                            .key(hash64("title") ^ form_epoch.get())
-                                            .height(40.0)
-                                            .weight(1.0)
-                                            .min_width(0.0)
-                                            .background(Color::from_hex("#0F172A"))
-                                            .border(1.0, theme().outline, 12.0)
-                                            .clip_rounded(12.0),
-                                        Some({
-                                            let new_title = new_title.clone();
-                                            move |s| new_title.set(s)
-                                        }),
-                                        None::<fn(String)>,
-                                    ),
-                                    Box(Modifier::new().width(10.0).height(1.0)),
-                                    TextField(
-                                        "URL (example.com)",
-                                        Modifier::new()
-                                            .key(hash64("url") ^ form_epoch.get())
-                                            .height(40.0)
-                                            .weight(2.0)
-                                            .min_width(0.0)
-                                            .background(Color::from_hex("#0F172A"))
-                                            .border(1.0, theme().outline, 12.0)
-                                            .clip_rounded(12.0),
-                                        Some({
-                                            let new_url = new_url.clone();
-                                            move |s| new_url.set(s)
-                                        }),
-                                        None::<fn(String)>,
+                                            .padding_values(PaddingValues {
+                                                top: 12.0,
+                                                ..Default::default()
+                                            })
+                                            .background(theme().primary)
+                                            .clip_rounded(10.0),
                                     ),
                                 )),
-                            )),
-                        ),
-                        Box(Modifier::new().height(16.0).width(1.0)),
-                        // Bookmarks grid (cleaner formatting)
-                        Card(
-                            Modifier::new().fill_max_width(),
-                            Column(Modifier::new().fill_max_width()).child((
-                                Row(Modifier::new()
-                                    .fill_max_width()
-                                    .align_items(AlignItems::Center))
-                                .child((
-                                    Text("Bookmarks")
-                                        .size(16.0)
-                                        .single_line()
-                                        .color(theme().on_surface),
-                                    Spacer(),
-                                    Pill("Dismiss", false, {
-                                        let toast = toast.clone();
-                                        move || toast.set(None)
-                                    }),
-                                )),
-                                Box(Modifier::new().height(12.0).width(1.0)),
-                                Grid(
-                                    cols,
-                                    Modifier::new().fill_max_width(),
-                                    bookmarks
-                                        .get()
-                                        .iter()
-                                        .map(|bm| {
-                                            let bm = bm.clone();
-                                            let bms = bookmarks.clone();
-                                            let toast = toast.clone();
-                                            let card_key = hash64(&bm.url);
-
-                                            Box(Modifier::new().key(card_key).fill_max_width())
-                                                .child(Card(
-                                                    Modifier::new().fill_max_width(),
-                                                    Column(Modifier::new().fill_max_width()).child(
-                                                        (
-                                                            Text(bm.title.clone())
-                                                                .size(16.0)
-                                                                .single_line()
-                                                                .overflow_ellipsize()
-                                                                .color(theme().on_surface)
-                                                                .modifier(
-                                                                    Modifier::new()
-                                                                        .fill_max_width(),
-                                                                ),
-                                                            Box(Modifier::new()
-                                                                .height(6.0)
-                                                                .width(1.0)),
-                                                            Text(bm.url.clone())
-                                                                .size(12.0)
-                                                                .single_line()
-                                                                .overflow_ellipsize()
-                                                                .color(Color::from_hex("#9CA3AF"))
-                                                                .modifier(
-                                                                    Modifier::new()
-                                                                        .fill_max_width(),
-                                                                ),
-                                                            Box(Modifier::new()
-                                                                .height(12.0)
-                                                                .width(1.0)),
-                                                            Row(Modifier::new()
-                                                                .fill_max_width()
-                                                                .align_items(AlignItems::Center))
-                                                            .child((
-                                                                Primary("Open", {
-                                                                    let url = bm.url.clone();
-                                                                    move || open_url(&url)
-                                                                }),
-                                                                Spacer(),
-                                                                Pill("Remove", false, move || {
-                                                                    bms.update(|v| {
-                                                                        if let Some(pos) =
-                                                                            v.iter().position(|x| {
-                                                                                x.url == bm.url
-                                                                            })
-                                                                        {
-                                                                            v.remove(pos);
-                                                                        }
-                                                                    });
-                                                                    storage::save_bookmarks(
-                                                                        &bms.get(),
-                                                                    );
-                                                                    toast.set(Some(
-                                                                        "Bookmark removed.".into(),
-                                                                    ));
-                                                                }),
-                                                            )),
-                                                        ),
-                                                    ),
-                                                ))
-                                        })
-                                        .collect::<Vec<_>>(),
-                                    12.0,
-                                    12.0,
-                                ),
-                            )),
-                        ),
+                            )
+                        } else {
+                            // Collapsed - just the + button
+                            Button(
+                                Text("+ Add bookmark")
+                                    .size(14.0)
+                                    .color(Color::from_hex("#6B7280")),
+                                {
+                                    let show = show_add_form.clone();
+                                    move || show.set(true)
+                                },
+                            )
+                            .modifier(
+                                Modifier::new()
+                                    .padding_values(PaddingValues {
+                                        left: 16.0,
+                                        right: 16.0,
+                                        top: 10.0,
+                                        bottom: 10.0,
+                                    })
+                                    .background(Color(0, 0, 0, 0))
+                                    .clip_rounded(8.0)
+                                    .border(1.0, theme().outline, 8.0),
+                            )
+                        }),
                     )),
                 ),
-                Box(Modifier::new()),
-            )),
+            ),
         ),
-    )
+    );
+
+    overlay.host(Modifier::new().fill_max_size(), content)
 }
