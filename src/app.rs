@@ -2,8 +2,8 @@
 
 use std::rc::Rc;
 
-use repose_core::{CursorIcon, PaddingValues, prelude::*, set_theme_default};
 use repose_core::locals::ColorScheme;
+use repose_core::{CursorIcon, PaddingValues, prelude::*, set_theme_default};
 use repose_material::material3;
 use repose_ui::overlay::{OverlayHandle, SnackbarAction, SnackbarController, SnackbarRequest};
 use repose_ui::scroll::{ScrollArea, remember_scroll_state};
@@ -329,7 +329,9 @@ pub fn app(s: &mut Scheduler) -> View {
                                     }),
                                     Some({
                                         let engine = engine.clone();
-                                        move |submitted: String| search_or_open(engine.get(), &submitted)
+                                        move |submitted: String| {
+                                            search_or_open(engine.get(), &submitted)
+                                        }
                                     }),
                                 )),
                                 // Engine pills - subtle, inline
