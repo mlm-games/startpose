@@ -251,7 +251,7 @@ pub fn app(s: &mut Scheduler) -> View {
     let form_epoch = remember(|| signal(0u64));
     let root_scroll = remember_scroll_state("root_scroll");
 
-    let overlay = remember(|| OverlayHandle::new());
+    let overlay = remember(OverlayHandle::new);
     let snackbar = remember(|| SnackbarController::new((*overlay).clone()));
 
     let px_w = s.size.0 as f32;

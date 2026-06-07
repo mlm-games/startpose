@@ -17,6 +17,6 @@ pub fn wasm_start() -> Result<(), JsValue> {
     repose_platform::web::run_web_app_with_snackbar(
         |s, _rc| app::app(s),
         opts,
-        Some(Rc::new(|ms| SnackbarController::tick_for_frame(ms))),
+        Some(Rc::new(SnackbarController::tick_for_frame)),
     )
 }
