@@ -12,7 +12,6 @@ pub fn wasm_start() -> Result<(), JsValue> {
 
     let mut opts = repose_platform::web::WebOptions::new(None);
     opts.set_fullscreen(true);
-    opts.set_auto_root_scroll(false);
     opts.set_continuous_redraw(true);
 
     repose_platform::web::run_web_app_with_snackbar(

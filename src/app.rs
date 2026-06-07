@@ -3,6 +3,7 @@
 use std::rc::Rc;
 
 use repose_core::{CursorIcon, PaddingValues, prelude::*, set_theme_default};
+use repose_core::locals::ColorScheme;
 use repose_material::material3;
 use repose_ui::overlay::{OverlayHandle, SnackbarAction, SnackbarController, SnackbarRequest};
 use repose_ui::scroll::{ScrollArea, remember_scroll_state};
@@ -68,20 +69,25 @@ fn search_or_open(engine: SearchEngine, input: &str) {
 }
 
 fn theme_pro() -> Theme {
-    let mut t = Theme::default();
-    t.background = Color::from_hex("#0B0F14");
-    t.surface = Color::from_hex("#111827");
-    t.on_surface = Color::from_hex("#E5E7EB");
-    t.primary = Color::from_hex("#3B82F6");
-    t.on_primary = Color::WHITE;
-    t.outline = Color::from_hex("#243041");
-    t.focus = Color::from_hex("#60A5FA");
-    t.button_bg = Color::from_hex("#1F2937");
-    t.button_bg_hover = Color::from_hex("#243041");
-    t.button_bg_pressed = Color::from_hex("#2B3A52");
-    t.scrollbar_track = Color(0xFF, 0xFF, 0xFF, 16);
-    t.scrollbar_thumb = Color(0xFF, 0xFF, 0xFF, 80);
-    t
+    Theme {
+        colors: ColorScheme {
+            background: Color::from_hex("#0B0F14"),
+            surface: Color::from_hex("#111827"),
+            on_surface: Color::from_hex("#E5E7EB"),
+            primary: Color::from_hex("#3B82F6"),
+            on_primary: Color::WHITE,
+            outline: Color::from_hex("#243041"),
+            focus: Color::from_hex("#60A5FA"),
+            ..ColorScheme::dark()
+        },
+        focus: Color::from_hex("#60A5FA"),
+        button_bg: Color::from_hex("#1F2937"),
+        button_bg_hover: Color::from_hex("#243041"),
+        button_bg_pressed: Color::from_hex("#2B3A52"),
+        scrollbar_track: Color(0xFF, 0xFF, 0xFF, 16),
+        scrollbar_thumb: Color(0xFF, 0xFF, 0xFF, 80),
+        ..Default::default()
+    }
 }
 
 fn EnginePill(label: &str, selected: bool, on_click: impl Fn() + 'static) -> View {
@@ -309,6 +315,7 @@ pub fn app(s: &mut Scheduler) -> View {
                                 // Large search input
                                 Box(Modifier::new().fill_max_width()).child(TextField(
                                     "Search or type a URL…",
+                                    query.get(),
                                     Modifier::new()
                                         .key(0xA11CE_u64)
                                         .height(56.0)
@@ -322,9 +329,7 @@ pub fn app(s: &mut Scheduler) -> View {
                                     }),
                                     Some({
                                         let engine = engine.clone();
-                                        move |submitted: String| {
-                                            search_or_open(engine.get(), &submitted)
-                                        }
+                                        move |submitted: String| search_or_open(engine.get(), &submitted)
                                     }),
                                 )),
                                 // Engine pills - subtle, inline
@@ -424,6 +429,7 @@ pub fn app(s: &mut Scheduler) -> View {
                                     Row(Modifier::new().fill_max_width()).child((
                                         TextField(
                                             "Title",
+                                            new_title.get(),
                                             Modifier::new()
                                                 .key(hash64("title") ^ form_epoch.get())
                                                 .height(40.0)
@@ -441,6 +447,7 @@ pub fn app(s: &mut Scheduler) -> View {
                                         Box(Modifier::new().width(10.0).height(1.0)),
                                         TextField(
                                             "URL",
+                                            new_url.get(),
                                             Modifier::new()
                                                 .key(hash64("url") ^ form_epoch.get())
                                                 .height(40.0)

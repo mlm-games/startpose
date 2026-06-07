@@ -1,6 +1,6 @@
 [package]
 name = "startpage"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2024"
 publish = false
 
@@ -8,11 +8,11 @@ publish = false
 crate-type = ["cdylib"]
 
 [dependencies]
-repose-core = "0.13.1"
-repose-ui = "0.13.1"
-repose-platform = { version = "0.13.1", features = ["web"] }
-repose-render-wgpu = "0.13.1"
-repose-material = "0.13.1"
+repose-core = "0.17.5"
+repose-ui = "0.17.5"
+repose-platform = { version = "0.17.5", features = ["web"] }
+repose-render-wgpu = "0.17.5"
+repose-material = "0.17.5"
 
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -36,5 +36,12 @@ web-sys = { version = "0.3", features = [
 
 getrandom = { version = "0.3.4", features = ["wasm_js"] }
 
-wgpu = { version = "*", features = ["webgpu", "webgl"] }
-winit = { version = "*", features = ["rwh_05"] }
+wgpu = { version = "29", features = ["webgpu", "webgl"] }
+winit = { version = "0.30", features = ["rwh_05"] }
+
+# [patch.crates-io]
+# repose-core = { path = "../repose/crates/repose-core" }
+# repose-ui = { path = "../repose/crates/repose-ui" }
+# repose-platform = { path = "../repose/crates/repose-platform" }
+# repose-render-wgpu = { path = "../repose/crates/repose-render-wgpu" }
+# repose-material = { path = "../repose/crates/repose-material" }
