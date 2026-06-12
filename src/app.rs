@@ -34,7 +34,9 @@ fn normalize_url(s: &str) -> Option<String> {
 }
 
 fn truncate_url(url: &str) -> String {
-    url.replace("https://", "").replace("http://", "").replace("www.", "")
+    url.replace("https://", "")
+        .replace("http://", "")
+        .replace("www.", "")
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -157,7 +159,9 @@ fn show_snackbar(sb: &SnackbarController, message: &str, duration_ms: u32) {
                         move || sb.dismiss()
                     }),
                 }),
-                Modifier::new().absolute().offset(Some(SP_4), None, Some(SP_4), None),
+                Modifier::new()
+                    .absolute()
+                    .offset(Some(SP_4), None, Some(SP_4), None),
             )
         }),
     });
@@ -171,17 +175,15 @@ fn BookmarkCard(
     let url_open = bm.url.clone();
     let url_remove = bm.url.clone();
 
-    let inner = Row(
-        Modifier::new()
-            .fill_max_width()
-            .padding_values(PaddingValues {
-                left: SP_4,
-                right: SP_4,
-                top: SP_3,
-                bottom: SP_3,
-            })
-            .align_items(AlignItems::Center),
-    )
+    let inner = Row(Modifier::new()
+        .fill_max_width()
+        .padding_values(PaddingValues {
+            left: SP_4,
+            right: SP_4,
+            top: SP_3,
+            bottom: SP_3,
+        })
+        .align_items(AlignItems::Center))
     .child((
         Column(Modifier::new().weight(1.0).min_width(0.0)).child((
             Text(&bm.title)
@@ -196,25 +198,20 @@ fn BookmarkCard(
                 .color(theme().on_surface_variant),
         )),
         Box(Modifier::new().width(SP_2).height(1.0)),
-        material3::IconButton(
-            Text("×").size(18.0),
-            {
-                let bms = bookmarks.clone();
-                let snackbar = snackbar.clone();
-                move || {
-                    bms.update(|v| v.retain(|b| b.url != url_remove));
-                    storage::save_bookmarks(&bms.get());
-                    show_snackbar(&snackbar, "Bookmark removed", 3000);
-                }
-            },
-        ),
+        material3::IconButton(Text("×").size(18.0), {
+            let bms = bookmarks.clone();
+            let snackbar = snackbar.clone();
+            move || {
+                bms.update(|v| v.retain(|b| b.url != url_remove));
+                storage::save_bookmarks(&bms.get());
+                show_snackbar(&snackbar, "Bookmark removed", 3000);
+            }
+        }),
     ));
 
     material3::ClickableOutlinedCard(
         move || open_url(&url_open),
-        Modifier::new()
-            .fill_max_width()
-            .cursor(CursorIcon::Pointer),
+        Modifier::new().fill_max_width().cursor(CursorIcon::Pointer),
         inner,
     )
 }
@@ -229,15 +226,13 @@ fn AddBookmarkForm(
     let on_dismiss_clone = on_dismiss.clone();
 
     Column(Modifier::new().fill_max_width().padding(SP_5)).child((
-        Row(
-            Modifier::new()
-                .fill_max_width()
-                .align_items(AlignItems::Center)
-                .padding_values(PaddingValues {
-                    bottom: SP_3,
-                    ..Default::default()
-                }),
-        )
+        Row(Modifier::new()
+            .fill_max_width()
+            .align_items(AlignItems::Center)
+            .padding_values(PaddingValues {
+                bottom: SP_3,
+                ..Default::default()
+            }))
         .child((
             Text("Add bookmark").size(18.0).color(theme().on_surface),
             Spacer(),
@@ -284,46 +279,52 @@ fn AddBookmarkForm(
             },
         ),
         Box(Modifier::new().height(SP_4).width(1.0)),
-        Row(
-            Modifier::new()
-                .fill_max_width()
-                .align_items(AlignItems::Center),
-        )
+        Row(Modifier::new()
+            .fill_max_width()
+            .align_items(AlignItems::Center))
         .child((
             Spacer(),
-            material3::TextButton(Modifier::new(), {
-                let on_dismiss = on_dismiss.clone();
-                move || on_dismiss()
-            }, || Text("Cancel")),
+            material3::TextButton(
+                Modifier::new(),
+                {
+                    let on_dismiss = on_dismiss.clone();
+                    move || on_dismiss()
+                },
+                || Text("Cancel"),
+            ),
             Box(Modifier::new().width(SP_2).height(1.0)),
-            material3::FilledButton(Modifier::new(), {
-                let bookmarks = bookmarks.clone();
-                let new_title = new_title.clone();
-                let new_url = new_url.clone();
-                let snackbar = snackbar.clone();
-                let on_dismiss = on_dismiss_clone.clone();
-                move || {
-                    let title = new_title.get().trim().to_string();
-                    let url_raw = new_url.get().trim().to_string();
+            material3::FilledButton(
+                Modifier::new(),
+                {
+                    let bookmarks = bookmarks.clone();
+                    let new_title = new_title.clone();
+                    let new_url = new_url.clone();
+                    let snackbar = snackbar.clone();
+                    let on_dismiss = on_dismiss_clone.clone();
+                    move || {
+                        let title = new_title.get().trim().to_string();
+                        let url_raw = new_url.get().trim().to_string();
 
-                    if title.is_empty() || url_raw.is_empty() {
-                        show_snackbar(&snackbar, "Title and URL are required", 4000);
-                        return;
+                        if title.is_empty() || url_raw.is_empty() {
+                            show_snackbar(&snackbar, "Title and URL are required", 4000);
+                            return;
+                        }
+                        let Some(url) = normalize_url(&url_raw) else {
+                            show_snackbar(&snackbar, "Invalid URL format", 4000);
+                            return;
+                        };
+
+                        bookmarks.update(|v| v.push(Bookmark { title, url }));
+                        storage::save_bookmarks(&bookmarks.get());
+
+                        new_title.set(String::new());
+                        new_url.set(String::new());
+                        on_dismiss();
+                        show_snackbar(&snackbar, "Bookmark added", 3000);
                     }
-                    let Some(url) = normalize_url(&url_raw) else {
-                        show_snackbar(&snackbar, "Invalid URL format", 4000);
-                        return;
-                    };
-
-                    bookmarks.update(|v| v.push(Bookmark { title, url }));
-                    storage::save_bookmarks(&bookmarks.get());
-
-                    new_title.set(String::new());
-                    new_url.set(String::new());
-                    on_dismiss();
-                    show_snackbar(&snackbar, "Bookmark added", 3000);
-                }
-            }, || Text("Add").color(theme().on_primary)),
+                },
+                || Text("Add").color(theme().on_primary),
+            ),
         )),
     ))
 }
@@ -343,7 +344,7 @@ fn EmptyState() -> View {
         Text("No bookmarks yet")
             .size(22.0)
             .color(theme().on_surface),
-        Text("Tap + Add bookmark to save your first link.")
+        Text("Tap '+ Add bookmark' to save a link.")
             .size(14.0)
             .color(theme().on_surface_variant),
     ))
@@ -386,153 +387,128 @@ pub fn app(s: &mut Scheduler) -> View {
     let sb = snackbar.clone();
     let rs = root_scroll.clone();
 
-    let content = material3::Scaffold(
-        None,
-        None,
-        None,
-        move |padding| {
-            let bms = bms.clone();
-            let q = q.clone();
-            let eng = eng.clone();
-            let nt = nt.clone();
-            let nu = nu.clone();
-            let show = show.clone();
-            let sb = sb.clone();
-            let rs = rs.clone();
+    let content = material3::Scaffold(None, None, None, move |padding| {
+        let bms = bms.clone();
+        let q = q.clone();
+        let eng = eng.clone();
+        let nt = nt.clone();
+        let nu = nu.clone();
+        let show = show.clone();
+        let sb = sb.clone();
+        let rs = rs.clone();
 
-            Surface(
-                Modifier::new()
-                    .fill_max_size()
-                    .padding_values(padding)
-                    .background(theme().background),
-                ScrollArea(
-                    Modifier::new().fill_max_size(),
-                    rs,
-                    Column(
-                        Modifier::new()
-                            .fill_max_width()
-                            .padding(SP_6)
-                            .align_items(AlignItems::Center),
-                    )
+        Surface(
+            Modifier::new()
+                .fill_max_size()
+                .padding_values(padding)
+                .background(theme().background),
+            ScrollArea(
+                Modifier::new().fill_max_size(),
+                rs,
+                Column(
+                    Modifier::new()
+                        .fill_max_width()
+                        .padding(SP_6)
+                        .align_items(AlignItems::Center),
+                )
+                .child(
+                    Box(Modifier::new()
+                        .fill_max_width()
+                        .max_width(900.0)
+                        .min_width(0.0))
                     .child(
-                        Box(Modifier::new()
-                            .fill_max_width()
-                            .max_width(900.0)
-                            .min_width(0.0))
-                        .child(
-                            Column(
-                                Modifier::new()
-                                    .fill_max_width()
-                                    .align_items(AlignItems::Center),
-                            )
-                            .child((
-                                Text("Startpage")
-                                    .size(32.0)
-                                    .color(theme().on_surface)
-                                    .modifier(Modifier::new().padding_values(
-                                        PaddingValues {
-                                            top: SP_10,
-                                            bottom: SP_10,
-                                            ..Default::default()
-                                        },
-                                    )),
-                                Box(Modifier::new()
-                                    .fill_max_width()
-                                    .max_width(600.0))
-                                .child(
-                                    Column(
-                                        Modifier::new()
-                                            .fill_max_width()
-                                            .align_items(AlignItems::Center),
-                                    )
-                                    .child((
-                                        material3::OutlinedTextField(
-                                            Modifier::new()
-                                                .fill_max_width()
-                                                .height(56.0),
-                                            q.get(),
-                                            {
-                                                let q = q.clone();
-                                                move |s| q.set(s)
-                                            },
-                                            OutlinedTextFieldConfig {
-                                                label: None,
-                                                placeholder: Some(
-                                                    "Search or type a URL…".to_string(),
-                                                ),
-                                                leading_icon: None,
-                                                trailing_icon: None,
-                                                single_line: true,
-                                                is_error: false,
-                                                enabled: true,
-                                                on_submit: Some(Rc::new({
-                                                    let eng = eng.clone();
-                                                    move |submitted| {
-                                                        search_or_open(
-                                                            eng.get(),
-                                                            &submitted,
-                                                        )
-                                                    }
-                                                })),
-                                            },
-                                        ),
-                                        Row(
-                                            Modifier::new()
-                                                .padding_values(PaddingValues {
-                                                    top: SP_3,
-                                                    ..Default::default()
-                                                }),
-                                        )
-                                        .child(
-                                            SearchEngine::ALL
-                                                .iter()
-                                                .map(|&e| {
-                                                    let eng = eng.clone();
-                                                    material3::FilterChip(
-                                                        eng.get() == e,
-                                                        move || eng.set(e),
-                                                        Text(e.label()),
-                                                        None,
-                                                        None,
-                                                    )
-                                                })
-                                                .collect::<Vec<_>>(),
-                                        ),
-                                    )),
-                                ),
-                                if bms.get().is_empty() {
-                                    EmptyState()
-                                } else {
-                                    Box(Modifier::new()
+                        Column(
+                            Modifier::new()
+                                .fill_max_width()
+                                .align_items(AlignItems::Center),
+                        )
+                        .child((
+                            Text("Startpage")
+                                .size(32.0)
+                                .color(theme().on_surface)
+                                .modifier(Modifier::new().padding_values(PaddingValues {
+                                    top: SP_10,
+                                    bottom: SP_10,
+                                    ..Default::default()
+                                })),
+                            Box(Modifier::new().fill_max_width().max_width(600.0)).child(
+                                Column(
+                                    Modifier::new()
                                         .fill_max_width()
-                                        .padding_values(PaddingValues {
-                                            top: SP_6,
-                                            bottom: SP_6,
-                                            ..Default::default()
-                                        }))
-                                    .child(Grid(
-                                        cols,
-                                        Modifier::new().fill_max_width(),
-                                        bms.get()
+                                        .align_items(AlignItems::Center),
+                                )
+                                .child((
+                                    material3::OutlinedTextField(
+                                        Modifier::new().fill_max_width().height(56.0),
+                                        q.get(),
+                                        {
+                                            let q = q.clone();
+                                            move |s| q.set(s)
+                                        },
+                                        OutlinedTextFieldConfig {
+                                            label: None,
+                                            placeholder: Some("Search or type a URL…".to_string()),
+                                            leading_icon: None,
+                                            trailing_icon: None,
+                                            single_line: true,
+                                            is_error: false,
+                                            enabled: true,
+                                            on_submit: Some(Rc::new({
+                                                let eng = eng.clone();
+                                                move |submitted| {
+                                                    search_or_open(eng.get(), &submitted)
+                                                }
+                                            })),
+                                        },
+                                    ),
+                                    Row(Modifier::new().padding_values(PaddingValues {
+                                        top: SP_3,
+                                        ..Default::default()
+                                    }))
+                                    .child(
+                                        SearchEngine::ALL
                                             .iter()
-                                            .map(|bm| {
-                                                let bm = bm.clone();
-                                                BookmarkCard(
-                                                    bm,
-                                                    bms.clone(),
-                                                    sb.clone(),
+                                            .map(|&e| {
+                                                let eng = eng.clone();
+                                                material3::FilterChip(
+                                                    eng.get() == e,
+                                                    move || eng.set(e),
+                                                    Text(e.label()),
+                                                    None,
+                                                    None,
                                                 )
                                             })
                                             .collect::<Vec<_>>(),
-                                        SP_3,
-                                        SP_3,
-                                    ))
-                                },
-                                if show.get() {
-                                    Box(Modifier::new()
-                                        .fill_max_width()
-                                        .max_width(500.0))
-                                    .child(AddBookmarkForm(
+                                    ),
+                                )),
+                            ),
+                            if bms.get().is_empty() {
+                                EmptyState()
+                            } else {
+                                Box(Modifier::new().fill_max_width().padding_values(
+                                    PaddingValues {
+                                        top: SP_6,
+                                        bottom: SP_6,
+                                        ..Default::default()
+                                    },
+                                ))
+                                .child(Grid(
+                                    cols,
+                                    Modifier::new().fill_max_width(),
+                                    bms.get()
+                                        .iter()
+                                        .map(|bm| {
+                                            let bm = bm.clone();
+                                            BookmarkCard(bm, bms.clone(), sb.clone())
+                                        })
+                                        .collect::<Vec<_>>(),
+                                    SP_3,
+                                    SP_3,
+                                ))
+                            },
+                            if show.get() {
+                                Box(Modifier::new().fill_max_width().max_width(500.0)).child(
+                                    AddBookmarkForm(
                                         bms.clone(),
                                         nt.clone(),
                                         nu.clone(),
@@ -541,36 +517,30 @@ pub fn app(s: &mut Scheduler) -> View {
                                             let show = show.clone();
                                             move || show.set(false)
                                         },
-                                    ))
-                                } else {
-                                    Box(Modifier::new()
-                                        .padding_values(PaddingValues {
-                                            top: SP_4,
-                                            ..Default::default()
-                                        }))
-                                    .child(
-                                        material3::OutlinedButton(
-                                            Modifier::new(),
-                                            {
-                                                let show = show.clone();
-                                                move || show.set(true)
-                                            },
-                                            || {
-                                                Text("+ Add bookmark")
-                                                    .color(
-                                                        theme().on_surface_variant,
-                                                    )
-                                            },
-                                        ),
-                                    )
-                                },
-                            )),
-                        ),
+                                    ),
+                                )
+                            } else {
+                                Box(Modifier::new().padding_values(PaddingValues {
+                                    top: SP_4,
+                                    ..Default::default()
+                                }))
+                                .child(
+                                    material3::OutlinedButton(
+                                        Modifier::new(),
+                                        {
+                                            let show = show.clone();
+                                            move || show.set(true)
+                                        },
+                                        || Text("+ Add bookmark").color(theme().on_surface_variant),
+                                    ),
+                                )
+                            },
+                        )),
                     ),
                 ),
-            )
-        },
-    );
+            ),
+        )
+    });
 
     overlay.host(Modifier::new().fill_max_size(), content)
 }
