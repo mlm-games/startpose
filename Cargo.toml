@@ -8,11 +8,11 @@ publish = false
 crate-type = ["cdylib"]
 
 [dependencies]
-repose-core = "0.17.5"
-repose-ui = "0.17.5"
-repose-platform = { version = "0.17.5", features = ["web"] }
-repose-render-wgpu = "0.17.5"
-repose-material = "0.17.5"
+repose-core = "0.17"
+repose-ui = "0.17"
+repose-platform = { version = "0.17" }
+repose-render-wgpu = "0.17"
+repose-material = "0.17"
 
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
