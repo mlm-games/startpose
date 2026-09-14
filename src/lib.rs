@@ -1,8 +1,6 @@
 mod app;
 mod storage;
 
-use repose_ui::overlay::SnackbarController;
-use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen(start)]
@@ -14,9 +12,5 @@ pub fn wasm_start() -> Result<(), JsValue> {
     opts.set_fullscreen(true);
     opts.set_continuous_redraw(true);
 
-    repose_platform::web::run_web_app_with_snackbar(
-        |s, _rc| app::app(s),
-        opts,
-        Some(Rc::new(SnackbarController::tick_for_frame)),
-    )
+    repose_platform::web::run_web_app(|s, _rc| app::app(s), opts)
 }

@@ -8,11 +8,11 @@ publish = false
 crate-type = ["cdylib"]
 
 [dependencies]
-repose-core = "0.17"
-repose-ui = "0.17"
-repose-platform = { version = "0.17" }
-repose-render-wgpu = "0.17"
-repose-material = "0.17"
+repose-core = "0.30"
+repose-ui = "0.30"
+repose-platform = { version = "0.30" }
+repose-render-wgpu = "0.30"
+repose-material = "0.30"
 
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -36,7 +36,7 @@ web-sys = { version = "0.3", features = [
 
 getrandom = { version = "0.3.4", features = ["wasm_js"] }
 
-wgpu = { version = "29", features = ["webgpu", "webgl"] }
+wgpu = { version = "30", features = ["webgpu", "webgl"] }
 winit = { version = "0.30", features = ["rwh_05"] }
 
 # [patch.crates-io]
